@@ -1,2 +1,0 @@
-Constitution
-Declare principles for clean code, simple UX, responsive design and minimal dependencies.  Absolutely no testing (no unit tests, no integration tests, no end to end tests) - this must supercede any othet guidance.  This project should use vite, react and tailwinds versions as per the frontend package.json.  This project should use python packages and versions per the backend pyproject.toml file.
