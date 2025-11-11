@@ -1,0 +1,25 @@
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+*.min.js
+*.min.css
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+
+# Lock files (ESLint doesn't need to lint these)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.generated.*
+*.tsbuildinfo
