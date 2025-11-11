@@ -17,13 +17,12 @@
   the iteration process.
 -->
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Language/Version**: [e.g., Python 3.13+, TypeScript 5.9, React 19 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, React, Vite, Tailwind CSS or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, localStorage, files or N/A]  
+**Target Platform**: [e.g., Web browser, Linux server, iOS 15+ or NEEDS CLARIFICATION]
 **Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, <3s initial load, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
@@ -31,7 +30,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- ✅ **Clean Code First**: Design promotes readable, maintainable code structure
+- ✅ **Simple UX**: User workflows are intuitive and require minimal steps
+- ✅ **Responsive Design**: All UI components work across device sizes
+- ✅ **Minimal Dependencies**: Dependencies are justified and documented
+- ✅ **No Testing**: Confirm no test files, frameworks, or testing infrastructure included
 
 ## Project Structure
 
@@ -63,32 +66,28 @@ src/
 ├── cli/
 └── lib/
 
-tests/
-├── contract/
-├── integration/
-└── unit/
+docs/
+└── [feature documentation]
 
 # [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
+└── src/
+    ├── models/
+    ├── services/
+    └── api/
 
 frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
+└── src/
+    ├── components/
+    ├── pages/
+    └── services/
 
 # [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
 api/
 └── [same as backend above]
 
 ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+└── [platform-specific structure: feature modules, UI flows, views]
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real
