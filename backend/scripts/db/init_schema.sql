@@ -18,8 +18,8 @@
 --   - Indexes for query performance
 -- ============================================================================
 
--- Enable UUID extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Note: gen_random_uuid() is available by default in PostgreSQL 13+
+-- No need to install uuid-ossp extension in Azure PostgreSQL
 
 -- ============================================================================
 -- Table: users
