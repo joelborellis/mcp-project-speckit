@@ -22,6 +22,46 @@ The process is repeatable, documented, and optimized for rapid iteration—perfe
 
 ---
 
+## Starting Point: Raw Customer Requirements
+
+Before applying the SpecKit process, this is **all** I had from the customer—raw, unstructured requirements captured during initial discussions:
+
+### Original Customer Requirements (Frontend)
+
+> **Requirement 1**: A customizable, user-friendly web interface to view, search, and manage registered MCP endpoints. Users should have a way to input an MCP endpoint and have it be discovered and registered in the webapp.
+>
+> **Why It's Important**: Centralizes discovery and management of all MCP servers across teams. Provides transparency for admins and developers without requiring API access. Enables browsing by categories, metadata, and ownership — key for enterprise governance and adoption.
+
+> **Requirement 2**: Admins must be able to approve, reject, or remove MCP endpoint registrations before they become discoverable. When users input an MCP endpoint to be registered, they go into **pending status** until an Admin approves.
+>
+> **Why It's Important**: Ensures only vetted and secure endpoints are exposed within the enterprise. Supports compliance and data governance policies. Enables controlled onboarding workflows to prevent unauthorized or experimental endpoints from entering production registries.
+
+> **Requirement 3**: Ability to store and manage rich metadata such as endpoint name, IP/host, owner, approval status, and available tools. For the registration process, store this information in a **local data store** for now.
+>
+> **Why It's Important**: Metadata provides essential context for discovery, auditing, and integration. Enables downstream automation (e.g., approval workflows, ownership tracking). Supports internal cataloging standards and classification frameworks (e.g., by business unit or data type).
+
+> **Requirement 4**: Users must login to the web app using **Microsoft Entra ID** and **MSAL libraries**. All users will use the same directory for login and there should be ability to designate some users as **Admins**.
+>
+> **Why It's Important**: The system will have users who can register MCP endpoints and these users need to be tracked. Some users will be admins which have the ability to view registered MCP servers and approve them.
+
+These specifications are for the **web app frontend**. This will be connected eventually to a **FastAPI backend** with defined API endpoints to perform more complex actions. The goal of this specification is to get the UI/UX started, then wire it into the backend.
+
+### Updated Customer Requirements (Backend)
+
+After validating the frontend, the customer came back with:
+
+> **Requirement 5**: Create backend FastAPI app that will support the current features of the frontend application. Update the frontend application to use this new backend.
+>
+> **Why It's Important**: The backend needs to replace the IndexedDB that currently runs the application. The backend should implement as many routes/endpoints that are required to support the functionality of the frontend.
+
+> **Requirement 6**: Generate scripts to create database tables in PostgreSQL in Azure.
+>
+> **Why It's Important**: The system might change databases and will need to rebuild the tables and objects in the database.
+
+**That was it.** No user stories, no acceptance criteria, no technical architecture—just high-level business requirements. Everything else you'll see in the following sections was **generated through the SpecKit process**.
+
+---
+
 ## The SpecKit Process: Step-by-Step
 
 This project followed the exact SpecKit workflow defined in `instructions.md`. Here's how it unfolded:
