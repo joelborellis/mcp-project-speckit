@@ -69,7 +69,7 @@ Lists all members of the admin group.
 
 The script will output:
 ```
-Group Object ID: 12345678-1234-1234-1234-123456789012
+Group Object ID: <your-group-object-id>
 ```
 
 ### Step 2: Update Environment Variables
@@ -77,7 +77,7 @@ Group Object ID: 12345678-1234-1234-1234-123456789012
 Add the Group Object ID to `frontend/.env`:
 
 ```bash
-VITE_ENTRA_ADMIN_GROUP_ID=12345678-1234-1234-1234-123456789012
+VITE_ENTRA_ADMIN_GROUP_ID=<your-group-object-id>
 ```
 
 ### Step 3: Restart Application

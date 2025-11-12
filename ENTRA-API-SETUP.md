@@ -9,13 +9,13 @@ The backend is receiving tokens for Microsoft Graph API instead of tokens for yo
 
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Navigate to **Entra ID** > **App registrations**
-3. Find your app: `a2cc4c96-3186-458f-b43d-ef177678bb81`
+3. Find your app: `<your-client-id>`
 4. Click **Expose an API** in the left menu
 
 ### 2. Set Application ID URI
 
 1. Click **Add** next to "Application ID URI"
-2. Accept the default value: `api://a2cc4c96-3186-458f-b43d-ef177678bb81`
+2. Accept the default value: `api://<your-client-id>`
 3. Click **Save**
 
 ### 3. Add a Scope
@@ -37,7 +37,7 @@ If your frontend and backend use the same app registration:
 
 1. Scroll down to **Authorized client applications**
 2. Click **+ Add a client application**
-3. Enter your client ID: `a2cc4c96-3186-458f-b43d-ef177678bb81`
+3. Enter your client ID: `<your-client-id>`
 4. Check the scope you just created
 5. Click **Add application**
 
@@ -63,8 +63,8 @@ Once you've completed these steps:
 1. **Restart your frontend** (clear browser cache/session storage if needed)
 2. **Log out and log back in** to get a new token with the correct scope
 3. The token will now have:
-   - `aud` (audience): `api://a2cc4c96-3186-458f-b43d-ef177678bb81` or `a2cc4c96-3186-458f-b43d-ef177678bb81`
-   - `iss` (issuer): `https://login.microsoftonline.com/2a57864c-da2a-4a44-953c-9781f73f880a/v2.0`
+   - `aud` (audience): `api://<your-client-id>` or `<your-client-id>`
+   - `iss` (issuer): `https://login.microsoftonline.com/<your-tenant-id>/v2.0`
    - `scp` (scope): `access_as_user`
 
 ## Troubleshooting
