@@ -4,6 +4,8 @@
 
 This project demonstrates the **Spec driven development approach** using the tool **SpecKit** (https://github.com/github/spec-kit) I was anxious to try a specification-driven development approach designed for pre-sales technical engineers to rapidly prototype enterprise solutions during short customer engagements (typically 2-3 days). Rather than a traditional README explaining how to run the code, this document chronicles the **process** used to create a fully functional enterprise MCP (Model Context Protocol) Registry using SpecKit.
 
+**Want to see what it looks like?** Check out the [`screenshots/`](screenshots/) directory for visual examples of the application in action.
+
 ## The Challenge
 
 Pre-sales technical engineers face a unique challenge: they need to engage with customers, gather requirements, and deliver working prototypes that demonstrate technical capabilities—all within extremely compressed timeframes. Traditional development approaches are too slow; pure mockups lack credibility; Demos are cool but sometimes not specific enough to customer specifications. SpecKit bridges this gap by combining specification rigor with AI-assisted rapid development.
