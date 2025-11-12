@@ -14,7 +14,7 @@
 
 ---
 
-## Original Specification
+## Original Specification (Frontend)
 
 `/speckit.specify` We are building a web app frontend that will make calls to a backend. This spec focuses on the **frontend web app**.
 
@@ -61,13 +61,15 @@
 - The system will have users who can register MCP endpoints and these users need to be tracked
 - Some users will be admins which have the ability to view registered MCP servers and approve them
 
----
-
-## Implementation Scope
-
 These specifications are for the **web app frontend**. This will be connected eventually to a **FastAPI backend** with defined API endpoints to perform more complex actions. The goal of this specification is to get the UI/UX started, then wire it into the backend.
 
-### Plan
+## Clarify
+
+`/speckit.clarify` No Arguments
+
+This command asks come clarifying questions about the Spec.  Run without arguments and answer the questions as posed to update the Specification.
+
+## Plan
 
 `/speckit.plan` This is a **React TypeScript application** that uses **Tailwind CSS** for UI components.
 
@@ -81,13 +83,92 @@ These specifications are for the **web app frontend**. This will be connected ev
 
 ---
 
+## Tasks
+
+`/speckit.tasks` No Arguments
+
+This command breaks down the specification into tasks
+
+---
+
+## Analyze
+
+`/speckit.analyze` No Arguments
+
+This command analyzes the specification aand the constitution to confirm consistencies
+
+---
+
+## Implement
+
+`/speckit.implement` No Arguments
+
+This command implements and creates the code for the frontend
+
+---
+
+## First Specification Update
+
+`/speckit.specify`  We are building the backend for our application that serves routes/endpoints to create, update and fetch data related to the MCP Registry application.  This backend will use a PostgresSQL database running in Azure to store data.  This will replace the current IndexedDB the frontend is currently using.
+
+#### 4.  Create Backend FastAPI 
+
+**Requirement**:  Create backend FastAPI app that will support the current feaures of the frontend application.  Update the frontend application to use this new backend.
+
+**Why It's Important**:
+- The backend needs to replace the IndexedDB that currently runs the application
+- The backend should implement as many routes/endpoints that are required to support the functionality of the frontend
+
+#### 5.  Generate scripts to create database tables in PostgresSQL in Azure
+
+**Requirement**:  Create scripts to be run to setup the tables and whatever database objects are needed to support the application.
+
+**Why It's Important**:
+- The systme might change databases and will need to rebuild the tables and objects in the database
+
+## Plan
+
+`/speckit.plan` This is a **FastAPI Application**.
+
+**Current Implementation**:
+- Use CORS so that browser can access the routes/endpoints
+- Use uv for package management
+- Create .env file for the required environment variables to connect to the PostgresSQL database
+- Generate scripts to create any database objects required by the application
+- Make the Python code easy to read and any functions easy to understand what they do
+- Ensure that the frontend is connecting to this backend
+
+---
+
+## Tasks
+
+`/speckit.tasks` No Arguments
+
+This command breaks down the specification into tasks
+
+---
+
+## Analyze
+
+`/speckit.analyze` No Arguments
+
+This command analyzes the specification aand the constitution to confirm consistencies
+
+---
+
+## Implement
+
+`/speckit.implement` No Arguments
+
+This command implements and creates the code for the backend
+
+---
+
 ## Future Specifications (Not Implemented Yet)
 
-### Spec 0: Backend APIs
+`/speckit.specify` Create the backend APIs for the web app.
 
-Create the backend APIs for the web app.
-
-#### 4. API to Query Approval Status
+#### 6. API to Query Approval Status
 
 **Requirement**: A programmatic interface to query the approval status or details of MCP endpoints.
 
@@ -98,7 +179,7 @@ Create the backend APIs for the web app.
 
 ---
 
-#### 5. Audit Logging
+#### 7. Audit Logging
 
 **Requirement**: Track all changes to registry entries, including who made them and when.
 
@@ -109,7 +190,7 @@ Create the backend APIs for the web app.
 
 ---
 
-#### 6. Security & Access Control
+#### 8. Security & Access Control
 
 **Requirement**: Strict access management for registry functions and MCP server access policies.
 
@@ -120,7 +201,7 @@ Create the backend APIs for the web app.
 
 ---
 
-#### 7. UI to Test MCP Servers
+#### 9. UI to Test MCP Servers
 
 **Requirement**: Provide a "test" interface or integration to interact with MCP servers directly.
 
@@ -131,7 +212,7 @@ Create the backend APIs for the web app.
 
 ---
 
-#### 8 & 9. Categorization & Filtering
+#### 10. Categorization & Filtering
 
 **Requirement**: Allow endpoints to be tagged or categorized (e.g., "Data Services," "Developer Tools") and filtered accordingly.
 

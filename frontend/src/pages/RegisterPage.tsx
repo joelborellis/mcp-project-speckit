@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
-import { createEndpoint, isURLUnique } from '../services/db.service';
+import { createEndpoint, isURLUnique, APIError } from '../services/api.service';
 import {
   validateRegistrationForm,
   sanitizeString,
@@ -19,7 +19,7 @@ import { EndpointStatus, type MCPEndpoint } from '../types/endpoint.types';
  */
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<RegistrationFormData>({
     name: '',
@@ -58,9 +58,12 @@ export const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // Get access token
+      const token = await getAccessToken();
+
       // Check URL uniqueness
       const sanitizedUrl = sanitizeURL(formData.url);
-      const isUnique = await isURLUnique(sanitizedUrl);
+      const isUnique = await isURLUnique(sanitizedUrl, token);
       
       if (!isUnique) {
         setErrors({ url: 'This URL is already registered' });
@@ -86,14 +89,30 @@ export const RegisterPage: React.FC = () => {
         reviewTimestamp: null,
       };
 
-      // Save to database
-      await createEndpoint(endpoint);
+      // Save to backend
+      await createEndpoint(endpoint, token);
       
       toast.success('Endpoint registered successfully! Awaiting admin approval.');
       navigate('/my-registrations');
     } catch (error) {
       console.error('Failed to register endpoint:', error);
-      toast.error('Failed to register endpoint. Please try again.');
+      
+      // Handle specific API errors
+      if (error instanceof APIError) {
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          toast.error('Authentication failed. Please log in again.');
+        } else if (error.statusCode === 409) {
+          toast.error('This endpoint URL is already registered.');
+          setErrors({ url: 'This URL is already registered' });
+        } else if (error.statusCode >= 500) {
+          toast.error('Server error. Please try again later.');
+        } else {
+          const errorMsg = typeof error.details === 'string' ? error.details : error.message;
+          toast.error(errorMsg || 'Failed to register endpoint.');
+        }
+      } else {
+        toast.error('Failed to register endpoint. Please check your connection.');
+      }
     } finally {
       setIsSubmitting(false);
     }

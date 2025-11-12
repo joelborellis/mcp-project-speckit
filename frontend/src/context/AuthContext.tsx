@@ -14,6 +14,7 @@ export interface AuthContextValue {
   isLoading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  getAccessToken: () => Promise<string>;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -126,6 +127,38 @@ const AuthProviderInner: React.FC<PropsWithChildren> = ({ children }) => {
     }
   };
 
+  const getAccessToken = async (): Promise<string> => {
+    if (accounts.length === 0) {
+      throw new Error('No authenticated user');
+    }
+
+    try {
+      // Request token with API scope (format: api://{client-id}/.default)
+      // Token will include basic claims like sub, upn, unique_name
+      const apiScope = `api://${import.meta.env.VITE_ENTRA_CLIENT_ID}/.default`;
+      
+      const response = await instance.acquireTokenSilent({
+        account: accounts[0],
+        scopes: [apiScope],
+      });
+      return response.accessToken;
+    } catch (error) {
+      console.error('Failed to acquire token:', error);
+      // Try interactive token acquisition as fallback
+      try {
+        const apiScope = `api://${import.meta.env.VITE_ENTRA_CLIENT_ID}/.default`;
+        
+        const response = await instance.acquireTokenPopup({
+          scopes: [apiScope],
+        });
+        return response.accessToken;
+      } catch (popupError) {
+        console.error('Failed to acquire token via popup:', popupError);
+        throw new Error('Failed to get access token');
+      }
+    }
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -133,6 +166,7 @@ const AuthProviderInner: React.FC<PropsWithChildren> = ({ children }) => {
       isLoading,
       login,
       logout,
+      getAccessToken,
     }),
     [user, isLoading]
   );
