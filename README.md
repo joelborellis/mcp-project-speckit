@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project demonstrates the **Spec driven development approach** using a the tool **SpecKit** (https://github.com/github/spec-kit) I was anxious to try a specification-driven development approach designed for pre-sales technical engineers to rapidly prototype enterprise solutions during short customer engagements (typically 2-3 days). Rather than a traditional README explaining how to run the code, this document chronicles the **process** used to create a fully functional enterprise MCP (Model Context Protocol) Registry using SpecKit.
+This project demonstrates the **Spec driven development approach** using the tool **SpecKit** (https://github.com/github/spec-kit) I was anxious to try a specification-driven development approach designed for pre-sales technical engineers to rapidly prototype enterprise solutions during short customer engagements (typically 2-3 days). Rather than a traditional README explaining how to run the code, this document chronicles the **process** used to create a fully functional enterprise MCP (Model Context Protocol) Registry using SpecKit.
 
 ## The Challenge
 
