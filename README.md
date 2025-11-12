@@ -86,7 +86,7 @@ Before applying the SpecKit process, this is **all** I had from the customer—r
 >
 > **Why It's Important**: Metadata provides essential context for discovery, auditing, and integration. Enables downstream automation (e.g., approval workflows, ownership tracking). Supports internal cataloging standards and classification frameworks (e.g., by business unit or data type).
 
-> **Requirement 4**: Users must login to the web app using **Microsoft Entra ID** and **MSAL libraries**. All users will use the same directory for login and there should be ability to designate some users as **Admins**.
+> **Requirement 4**: Users must login to the web app. All users will use the same directory for login and there should be ability to designate some users as **Admins**.
 >
 > **Why It's Important**: The system will have users who can register MCP endpoints and these users need to be tracked. Some users will be admins which have the ability to view registered MCP servers and approve them.
 
