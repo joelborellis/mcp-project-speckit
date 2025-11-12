@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import './index.css';
 import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext';
-import { initializeDatabase } from './services/db.service';
+import { initializeAPI } from './services/api.service';
 import { initializeMsal } from './config/msal.config';
 
 // Initialize application
@@ -12,7 +12,7 @@ const initializeApp = async () => {
   try {
     await Promise.all([
       initializeMsal(),
-      initializeDatabase()
+      initializeAPI()
     ]);
     console.log('Application initialized successfully');
   } catch (error) {

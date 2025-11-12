@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { ApprovalCard } from '../components/admin/ApprovalCard';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import { getPendingApprovals, updateEndpointStatus, deleteEndpoint } from '../services/db.service';
+import { getPendingApprovals, updateEndpointStatus, deleteEndpoint, APIError } from '../services/api.service';
 import { EndpointStatus } from '../types/endpoint.types';
 import type { MCPEndpoint } from '../types/endpoint.types';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ interface ConfirmAction {
  * Admin-only page for reviewing and managing endpoint registrations
  */
 export const AdminApprovalsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [pendingEndpoints, setPendingEndpoints] = useState<MCPEndpoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -31,11 +31,25 @@ export const AdminApprovalsPage: React.FC = () => {
   const loadPendingApprovals = async () => {
     try {
       setIsLoading(true);
-      const endpoints = await getPendingApprovals();
+      const token = await getAccessToken();
+      const endpoints = await getPendingApprovals(token);
       setPendingEndpoints(endpoints);
     } catch (error) {
       console.error('Failed to load pending approvals:', error);
-      toast.error('Failed to load pending approvals');
+      
+      // Handle specific API errors
+      if (error instanceof APIError) {
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          toast.error('Authentication failed. You may not have admin access.');
+        } else if (error.statusCode >= 500) {
+          toast.error('Server error. Please try again later.');
+        } else {
+          const errorMsg = typeof error.details === 'string' ? error.details : error.message;
+          toast.error(errorMsg || 'Failed to load pending approvals.');
+        }
+      } else {
+        toast.error('Failed to load pending approvals. Please check your connection.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -61,18 +75,34 @@ export const AdminApprovalsPage: React.FC = () => {
     setConfirmAction(null);
 
     try {
+      const token = await getAccessToken();
       await updateEndpointStatus(
         endpoint.id,
         EndpointStatus.Approved,
-        user.id,
-        user.displayName
+        token
       );
 
       setPendingEndpoints((prev) => prev.filter((e) => e.id !== endpoint.id));
       toast.success(`Approved "${endpoint.name}"`);
     } catch (error) {
       console.error('Failed to approve endpoint:', error);
-      toast.error('Failed to approve endpoint');
+      
+      // Handle specific API errors
+      if (error instanceof APIError) {
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          toast.error('Authentication failed. You may not have admin access.');
+        } else if (error.statusCode === 404) {
+          toast.error('Endpoint not found. It may have been deleted.');
+          setPendingEndpoints((prev) => prev.filter((e) => e.id !== endpoint.id));
+        } else if (error.statusCode >= 500) {
+          toast.error('Server error. Please try again later.');
+        } else {
+          const errorMsg = typeof error.details === 'string' ? error.details : error.message;
+          toast.error(errorMsg || 'Failed to approve endpoint.');
+        }
+      } else {
+        toast.error('Failed to approve endpoint. Please check your connection.');
+      }
     } finally {
       setProcessingId(null);
     }
@@ -86,18 +116,34 @@ export const AdminApprovalsPage: React.FC = () => {
     setConfirmAction(null);
 
     try {
+      const token = await getAccessToken();
       await updateEndpointStatus(
         endpoint.id,
         EndpointStatus.Rejected,
-        user.id,
-        user.displayName
+        token
       );
 
       setPendingEndpoints((prev) => prev.filter((e) => e.id !== endpoint.id));
       toast.success(`Rejected "${endpoint.name}"`);
     } catch (error) {
       console.error('Failed to reject endpoint:', error);
-      toast.error('Failed to reject endpoint');
+      
+      // Handle specific API errors
+      if (error instanceof APIError) {
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          toast.error('Authentication failed. You may not have admin access.');
+        } else if (error.statusCode === 404) {
+          toast.error('Endpoint not found. It may have been deleted.');
+          setPendingEndpoints((prev) => prev.filter((e) => e.id !== endpoint.id));
+        } else if (error.statusCode >= 500) {
+          toast.error('Server error. Please try again later.');
+        } else {
+          const errorMsg = typeof error.details === 'string' ? error.details : error.message;
+          toast.error(errorMsg || 'Failed to reject endpoint.');
+        }
+      } else {
+        toast.error('Failed to reject endpoint. Please check your connection.');
+      }
     } finally {
       setProcessingId(null);
     }
@@ -111,12 +157,29 @@ export const AdminApprovalsPage: React.FC = () => {
     setConfirmAction(null);
 
     try {
-      await deleteEndpoint(endpoint.id);
+      const token = await getAccessToken();
+      await deleteEndpoint(endpoint.id, token);
       setPendingEndpoints((prev) => prev.filter((e) => e.id !== endpoint.id));
       toast.success(`Removed "${endpoint.name}"`);
     } catch (error) {
       console.error('Failed to remove endpoint:', error);
-      toast.error('Failed to remove endpoint');
+      
+      // Handle specific API errors
+      if (error instanceof APIError) {
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          toast.error('Authentication failed. You may not have admin access.');
+        } else if (error.statusCode === 404) {
+          toast.error('Endpoint not found. It may have been already removed.');
+          setPendingEndpoints((prev) => prev.filter((e) => e.id !== endpoint.id));
+        } else if (error.statusCode >= 500) {
+          toast.error('Server error. Please try again later.');
+        } else {
+          const errorMsg = typeof error.details === 'string' ? error.details : error.message;
+          toast.error(errorMsg || 'Failed to remove endpoint.');
+        }
+      } else {
+        toast.error('Failed to remove endpoint. Please check your connection.');
+      }
     } finally {
       setProcessingId(null);
     }

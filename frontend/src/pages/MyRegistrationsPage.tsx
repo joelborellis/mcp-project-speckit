@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
-import { getUserRegistrations } from '../services/db.service';
+import { getUserRegistrations, APIError } from '../services/api.service';
 import { formatTimestamp } from '../utils/formatting';
 import type { MCPEndpoint } from '../types/endpoint.types';
 import { EndpointStatus } from '../types/endpoint.types';
@@ -11,7 +12,7 @@ import { EndpointStatus } from '../types/endpoint.types';
  * Displays user's endpoint submissions
  */
 export const MyRegistrationsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [registrations, setRegistrations] = useState<MCPEndpoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,17 +21,32 @@ export const MyRegistrationsPage: React.FC = () => {
       if (!user) return;
       
       try {
-        const data = await getUserRegistrations(user.id);
+        const token = await getAccessToken();
+        const data = await getUserRegistrations(token);
         setRegistrations(data);
       } catch (error) {
         console.error('Failed to load registrations:', error);
+        
+        // Handle specific API errors
+        if (error instanceof APIError) {
+          if (error.statusCode === 401 || error.statusCode === 403) {
+            toast.error('Authentication failed. Please log in again.');
+          } else if (error.statusCode >= 500) {
+            toast.error('Server error. Please try again later.');
+          } else {
+            const errorMsg = typeof error.details === 'string' ? error.details : error.message;
+            toast.error(errorMsg || 'Failed to load registrations.');
+          }
+        } else {
+          toast.error('Failed to load registrations. Please check your connection.');
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     loadRegistrations();
-  }, [user]);
+  }, [user, getAccessToken]);
 
   const getStatusBadgeClass = (status: typeof EndpointStatus[keyof typeof EndpointStatus]) => {
     switch (status) {
