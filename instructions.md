@@ -126,6 +126,12 @@ This command implements and creates the code for the frontend
 **Why It's Important**:
 - The systme might change databases and will need to rebuild the tables and objects in the database
 
+## Clarify
+
+`/speckit.clarify` No Arguments
+
+This command asks come clarifying questions about the Spec.  Run without arguments and answer the questions as posed to update the Specification.
+
 ## Plan
 
 `/speckit.plan` This is a **FastAPI Application**.
@@ -164,13 +170,22 @@ This command implements and creates the code for the backend
 
 ---
 
-## Future Specifications (Not Implemented Yet)
+## Second Specification Update
 
-`/speckit.specify` Create the backend APIs for the web app.
+`/speckit.specify` Add new functionality to the existing app keeping the same architecture of frontend and backend.
 
-#### 6. API to Query Approval Status
+#### 6. Create the Browse Functioanlity
 
-**Requirement**: A programmatic interface to query the approval status or details of MCP endpoints.
+**Requirement**: Complete the Browse functionality.  
+
+**Why It's Important**:
+- Allows users regardless of whether they are Admin or not to see all the registeretd Servers and their status via the Browse page
+
+---
+
+#### 7. API to Query Approval Status
+
+**Requirement**: A programmatic interface to query the approval status or details of MCP endpoints given the endpoint URL.
 
 **Why It's Important**:
 - Enables integration with internal tools, CI/CD pipelines, and monitoring systems
@@ -179,9 +194,9 @@ This command implements and creates the code for the backend
 
 ---
 
-#### 7. Audit Logging
+#### 8. Audit Logging
 
-**Requirement**: Track all changes to registry entries, including who made them and when.
+**Requirement**: Track all changes to registry entries in the database, including who made them and when.
 
 **Why It's Important**:
 - Critical for security, compliance, and troubleshooting
@@ -190,7 +205,65 @@ This command implements and creates the code for the backend
 
 ---
 
-#### 8. Security & Access Control
+## Clarify
+
+`/speckit.clarify` No Arguments
+
+This command asks come clarifying questions about the Spec.  Run without arguments and answer the questions as posed to update the Specification.
+
+---
+
+## Plan
+
+`/speckit.plan` These are enhancements and some new functionality.
+
+**Current Implementation**:
+- Add to the frontend Browse section a full page that shows all the registrations and details about their status and who owns and created them
+- Create backend routes/endpoints where necessary
+- Create scripts to update the database schema if required to support functionality
+
+---
+
+## Tasks
+
+`/speckit.tasks` No Arguments
+
+This command breaks down the specification into tasks
+
+---
+
+## Analyze
+
+`/speckit.analyze` No Arguments
+
+This command analyzes the specification aand the constitution to confirm consistencies
+
+---
+
+## Implement
+
+`/speckit.implement` No Arguments
+
+This command implements and creates the code for the backend
+
+---
+
+## Third Specification Update (Not Implemented Yet)
+
+`/speckit.specify` Add API's or routes/endpoints to the backend that can be accessed eventually by the frontend or other systems.
+
+#### 9. UI to Test MCP Servers
+
+**Requirement**: Provide a "test" interface or integration to interact with MCP servers directly list the tools available.
+
+**Why It's Important**:
+- Enables developers to validate MCP responses and metadata before use
+- Reduces friction in integration and troubleshooting workflows
+- Helps ensure MCP endpoints are functional and compliant with expected standards
+
+---
+
+#### 10. Security & Access Control
 
 **Requirement**: Strict access management for registry functions and MCP server access policies.
 
@@ -201,18 +274,7 @@ This command implements and creates the code for the backend
 
 ---
 
-#### 9. UI to Test MCP Servers
-
-**Requirement**: Provide a "test" interface or integration to interact with MCP servers directly.
-
-**Why It's Important**:
-- Enables developers to validate MCP responses and metadata before use
-- Reduces friction in integration and troubleshooting workflows
-- Helps ensure MCP endpoints are functional and compliant with expected standards
-
----
-
-#### 10. Categorization & Filtering
+#### 11. Categorization & Filtering
 
 **Requirement**: Allow endpoints to be tagged or categorized (e.g., "Data Services," "Developer Tools") and filtered accordingly.
 

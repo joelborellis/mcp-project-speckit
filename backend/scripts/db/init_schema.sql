@@ -107,7 +107,7 @@ COMMENT ON COLUMN registrations.updated_at IS 'Last update timestamp';
 
 CREATE TABLE IF NOT EXISTS audit_log (
     log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    registration_id UUID NOT NULL REFERENCES registrations(registration_id) ON DELETE CASCADE,
+    registration_id UUID NOT NULL,  -- T037: NO FOREIGN KEY CONSTRAINT to preserve logs after registration deletion
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     action TEXT NOT NULL CHECK (action IN ('Created', 'Approved', 'Rejected', 'Updated', 'Deleted')),
     previous_status TEXT,

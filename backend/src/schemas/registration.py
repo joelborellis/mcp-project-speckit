@@ -191,7 +191,7 @@ class RegistrationListResponse(BaseModel):
         ...,
         description="Maximum number of results per page",
         ge=1,
-        le=100
+        le=1000
     )
     
     offset: int = Field(
