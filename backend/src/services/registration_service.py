@@ -168,6 +168,19 @@ class RegistrationService:
             - available_tools must be valid JSONB array (validated by Pydantic)
         """
         try:
+            # Debug: Check what we received
+            logger.info(f"create_registration called with type: {type(registration_create)}")
+            
+            # If it's a dict or has model_dump, convert to ensure we have clean data
+            if isinstance(registration_create, dict):
+                reg_data = registration_create
+            elif hasattr(registration_create, 'model_dump'):
+                reg_data = registration_create.model_dump()
+            else:
+                reg_data = registration_create
+            
+            logger.info(f"reg_data type: {type(reg_data)}, keys: {reg_data.keys() if isinstance(reg_data, dict) else 'not a dict'}")
+            
             # Start transaction for atomic operation + audit logging
             async with self.conn.transaction():
                 query = """
@@ -181,19 +194,44 @@ class RegistrationService:
                               approver_id, created_at, updated_at, approved_at
                 """
                 
-                # Convert available_tools list to JSON string for asyncpg
-                tools_json = json.dumps(registration_create.available_tools)
+                # Extract values from dict
+                endpoint_url_str = str(reg_data.get("endpoint_url") if isinstance(reg_data, dict) else reg_data["endpoint_url"])
+                endpoint_name_str = reg_data.get("endpoint_name") if isinstance(reg_data, dict) else reg_data["endpoint_name"]
+                description_str = reg_data.get("description") if isinstance(reg_data, dict) else reg_data["description"]
+                owner_contact_str = reg_data.get("owner_contact") if isinstance(reg_data, dict) else reg_data["owner_contact"]
+                available_tools_list = reg_data.get("available_tools", []) if isinstance(reg_data, dict) else reg_data["available_tools"]
+                status_str = RegistrationStatus.PENDING.value
+                submitter_id_uuid = submitter_id if isinstance(submitter_id, UUID) else UUID(str(submitter_id))
                 
-                row = await self.conn.fetchrow(
-                    query,
-                    str(registration_create.endpoint_url),
-                    registration_create.endpoint_name,
-                    registration_create.description,
-                    registration_create.owner_contact,
-                    tools_json,  # JSONB as JSON string
-                    RegistrationStatus.PENDING.value,
-                    submitter_id
-                )
+                # Convert available_tools list to JSON string for asyncpg
+                tools_json = json.dumps(available_tools_list)
+                
+                # Log parameters for debugging
+                logger.info(f"About to call fetchrow with 7 params:")
+                logger.info(f"  $1 endpoint_url: {endpoint_url_str} (type: {type(endpoint_url_str)})")
+                logger.info(f"  $2 endpoint_name: {endpoint_name_str} (type: {type(endpoint_name_str)})")
+                logger.info(f"  $3 description: {description_str} (type: {type(description_str)})")
+                logger.info(f"  $4 owner_contact: {owner_contact_str} (type: {type(owner_contact_str)})")
+                logger.info(f"  $5 tools_json: {tools_json[:100]}... (type: {type(tools_json)})")
+                logger.info(f"  $6 status: {status_str} (type: {type(status_str)})")
+                logger.info(f"  $7 submitter_id: {submitter_id_uuid} (type: {type(submitter_id_uuid)})")
+                
+                # Try calling with explicit inline values to rule out variable issues
+                try:
+                    row = await self.conn.fetchrow(
+                        query,
+                        endpoint_url_str,  # $1
+                        endpoint_name_str,  # $2
+                        description_str,  # $3
+                        owner_contact_str,  # $4
+                        tools_json,  # $5
+                        status_str,  # $6
+                        submitter_id_uuid  # $7
+                    )
+                except Exception as fetch_error:
+                    logger.error(f"fetchrow exception: {type(fetch_error).__name__}: {fetch_error}")
+                    logger.error(f"Query was: {query}")
+                    raise
                 
                 registration = Registration(
                     registration_id=row["registration_id"],

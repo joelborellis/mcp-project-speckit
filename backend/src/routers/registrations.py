@@ -151,16 +151,10 @@ async def create_registration(
             
             # Convert schema to model
             from models import RegistrationCreate
-            reg_create = RegistrationCreate(
-                endpoint_url=request.endpoint_url,
-                endpoint_name=request.endpoint_name,
-                description=request.description,
-                owner_contact=request.owner_contact,
-                available_tools=request.available_tools
-            )
             
+            # Pass request directly - RegistrationService will handle conversion
             registration = await service.create_registration(
-                reg_create,
+                request,
                 submitter_id=current_user.user_id
             )
             

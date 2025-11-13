@@ -9,6 +9,7 @@ All audit logging is atomic - it occurs within the same database transaction
 as the operation being logged.
 """
 
+import json
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
@@ -88,6 +89,9 @@ class AuditService:
             RETURNING log_id
         """
         
+        # Convert metadata dict to JSON string for JSONB column
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        
         log_id = await connection.fetchval(
             query,
             registration_id,
@@ -95,7 +99,7 @@ class AuditService:
             action.value,
             previous_status,
             new_status,
-            metadata,
+            metadata_json,
             datetime.utcnow()
         )
         
