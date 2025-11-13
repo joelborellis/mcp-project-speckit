@@ -200,7 +200,7 @@ async def list_registrations(
     status_filter: Optional[str] = Query(None, alias="status", description="Filter by status: Pending, Approved, Rejected"),
     submitter_id: Optional[UUID] = Query(None, description="Filter by submitter user ID"),
     search: Optional[str] = Query(None, description="Search in endpoint_name and owner_contact"),
-    limit: int = Query(10, ge=1, le=100, description="Maximum results to return (1-100)"),
+    limit: int = Query(10, ge=1, le=1000, description="Maximum results to return (1-1000)"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     current_user: User = Depends(get_current_user)
 ):
@@ -532,6 +532,98 @@ async def get_registration(
         )
 
 
+@router.get("/by-url", response_model=RegistrationResponse)
+async def get_registration_by_url(
+    endpoint_url: str = Query(..., description="URL of the MCP endpoint to query"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get registration by endpoint URL (User Story 2: Programmatic Query).
+    
+    Queries registrations by exact endpoint_url match. This endpoint enables
+    CI/CD pipelines and monitoring systems to check registration status
+    programmatically without needing the registration_id.
+    
+    Args:
+        endpoint_url: Full URL of the MCP endpoint (URL-encoded in query string)
+        current_user: Automatically injected by get_current_user dependency
+        
+    Returns:
+        RegistrationResponse: Registration details if found
+        
+    Status Codes:
+        - 200 OK: Registration found and returned
+        - 401 Unauthorized: Invalid or missing token
+        - 404 Not Found: No registration found for the given URL
+        
+    Performance:
+        - Query response time: <200ms (leverages unique index on endpoint_url)
+        
+    Example:
+        GET /registrations/by-url?endpoint_url=https://api.example.com/mcp
+        Authorization: Bearer <token>
+        
+        Response (200 OK):
+        {
+            "registration_id": "abc-123-def-456",
+            "endpoint_url": "https://api.example.com/mcp",
+            "endpoint_name": "Example MCP Server",
+            "status": "Approved",
+            "created_at": "2025-11-11T10:00:00Z",
+            ...
+        }
+        
+        Response (404 Not Found):
+        {
+            "detail": "No registration found for the given endpoint URL."
+        }
+        
+    Use Cases (User Story 2 - US2):
+        - CI/CD: Check if MCP endpoint registered/approved before deployment
+        - Monitoring: Track registration status of production endpoints
+        - Automation: Query approval status from scripts/tools
+    """
+    logger.debug(f"Get registration by URL requested: {endpoint_url} by {current_user.user_id}")
+    
+    try:
+        async with get_db_connection() as conn:
+            service = RegistrationService(conn)
+            # T026: Call new get_registration_by_url method
+            registration = await service.get_registration_by_url(endpoint_url)
+            
+            # T028: Return 404 if URL not found
+            if not registration:
+                logger.warning(f"Registration not found for URL: {endpoint_url}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No registration found for the given endpoint URL."
+                )
+            
+            return RegistrationResponse(
+                registration_id=registration.registration_id,
+                endpoint_url=str(registration.endpoint_url),  # Convert HttpUrl to string
+                endpoint_name=registration.endpoint_name,
+                description=registration.description,
+                owner_contact=registration.owner_contact,
+                available_tools=registration.available_tools,
+                status=registration.status,
+                submitter_id=registration.submitter_id,
+                approver_id=registration.approver_id,
+                created_at=registration.created_at,
+                updated_at=registration.updated_at,
+                approved_at=registration.approved_at
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving registration by URL {endpoint_url}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
 @router.patch("/{registration_id}/status", response_model=RegistrationResponse)
 async def update_registration_status(
     registration_id: UUID,
@@ -729,7 +821,8 @@ async def delete_registration(
         async with get_db_connection() as conn:
             service = RegistrationService(conn)
             
-            deleted = await service.delete_registration(registration_id)
+            # T036: Pass deleter_id for audit logging
+            deleted = await service.delete_registration(registration_id, admin_user.user_id)
             
             if not deleted:
                 logger.warning(f"Registration not found for deletion: {registration_id}")

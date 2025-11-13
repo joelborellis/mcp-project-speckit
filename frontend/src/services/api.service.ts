@@ -156,6 +156,68 @@ export const initializeAPI = async (): Promise<void> => {
 };
 
 /**
+ * Get registrations with optional filters (Generic browse endpoint)
+ * Supports all query parameters for maximum flexibility
+ */
+export const getRegistrations = async (params: {
+  status?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}, token: string): Promise<RegistrationListResponse> => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.status) queryParams.append('status', params.status);
+  if (params.search) queryParams.append('search', params.search);
+  if (params.limit) queryParams.append('limit', params.limit.toString());
+  if (params.offset) queryParams.append('offset', params.offset.toString());
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/registrations?${queryString}` : '/registrations';
+  
+  const response = await fetchWithAuth(endpoint, token);
+  return response.json();
+};
+
+/**
+ * Get registration by endpoint URL (User Story 2: Programmatic Query - T031)
+ * 
+ * Queries registration by exact endpoint_url match. Enables CI/CD pipelines
+ * and monitoring systems to check registration status programmatically.
+ * 
+ * @param endpoint_url - Full URL of the MCP endpoint
+ * @param token - Authentication token
+ * @returns Single RegistrationResponse if found
+ * @throws APIError with status 404 if registration not found (T032)
+ * @throws APIError with status 401 if authentication fails
+ * 
+ * Example:
+ * ```ts
+ * try {
+ *   const registration = await getRegistrationByUrl('https://api.example.com/mcp', token);
+ *   console.log(`Status: ${registration.status}`);
+ * } catch (error) {
+ *   if (error instanceof APIError && error.statusCode === 404) {
+ *     console.log('Registration not found');
+ *   }
+ * }
+ * ```
+ */
+export const getRegistrationByUrl = async (
+  endpoint_url: string, 
+  token: string
+): Promise<RegistrationResponse> => {
+  // T027: URL encode the endpoint_url parameter
+  const encodedUrl = encodeURIComponent(endpoint_url);
+  const response = await fetchWithAuth(`/registrations/by-url?endpoint_url=${encodedUrl}`, token);
+  
+  // T032: Error handling for 404 already implemented in fetchWithAuth
+  // fetchWithAuth throws APIError with status 404 and message "Resource not found."
+  // which gets transformed to "Registration not found" in catch block
+  return response.json();
+};
+
+/**
  * Get all approved endpoints (Browse)
  */
 export const getAllApprovedEndpoints = async (token: string): Promise<MCPEndpoint[]> => {
@@ -205,6 +267,61 @@ export const getUserPendingRegistrations = async (token: string): Promise<MCPEnd
   return data.results
     .filter(reg => reg.status === 'Pending')
     .map(mapRegistrationToEndpoint);
+};
+
+/**
+ * Get audit logs with optional filters (User Story 3: Audit Logging - T042)
+ * 
+ * Queries audit logs for registration modifications. Requires admin privileges.
+ * 
+ * @param params - Filter parameters (registration_id, user_id, action, from, to, limit, offset)
+ * @param token - Authentication token (must be admin)
+ * @returns Paginated list of audit log entries
+ * @throws APIError with status 403 if user is not admin (T043)
+ * @throws APIError with status 400 if date range invalid (end before start)
+ * 
+ * Example:
+ * ```ts
+ * try {
+ *   const logs = await getAuditLogs({
+ *     registration_id: 'abc-123',
+ *     limit: 50,
+ *     offset: 0
+ *   }, token);
+ *   console.log(`Found ${logs.total} audit entries`);
+ * } catch (error) {
+ *   if (error instanceof APIError && error.statusCode === 403) {
+ *     console.log('Admin privileges required');
+ *   }
+ * }
+ * ```
+ */
+export const getAuditLogs = async (params: {
+  registration_id?: string;
+  user_id?: string;
+  action?: string;
+  from?: string;  // ISO 8601 datetime
+  to?: string;    // ISO 8601 datetime
+  limit?: number;
+  offset?: number;
+}, token: string): Promise<import('../types/audit-log.types').AuditLogListResponse> => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.registration_id) queryParams.append('registration_id', params.registration_id);
+  if (params.user_id) queryParams.append('user_id', params.user_id);
+  if (params.action) queryParams.append('action', params.action);
+  if (params.from) queryParams.append('from', params.from);
+  if (params.to) queryParams.append('to', params.to);
+  if (params.limit) queryParams.append('limit', params.limit.toString());
+  if (params.offset) queryParams.append('offset', params.offset.toString());
+  
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/audit-logs?${queryString}` : '/audit-logs';
+  
+  // T043: Error handling for 403 Forbidden already implemented in fetchWithAuth
+  // fetchWithAuth throws APIError with status 403 and message "You do not have permission..."
+  const response = await fetchWithAuth(endpoint, token);
+  return response.json();
 };
 
 /**

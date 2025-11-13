@@ -2,12 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { BrowsePage } from './pages/BrowsePage';
 import { RegisterPage } from './pages/RegisterPage';
 import { MyRegistrationsPage } from './pages/MyRegistrationsPage';
 import { AdminApprovalsPage } from './pages/AdminApprovalsPage';
 
 // Placeholder pages (will be created in subsequent phases)
-const BrowsePage = () => <div>Browse Page - Coming Soon</div>;
 const LoginPage = () => <div>Login Page - Coming Soon</div>;
 
 function App() {

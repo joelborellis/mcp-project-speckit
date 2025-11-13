@@ -67,6 +67,8 @@ from datetime import datetime
 import asyncpg
 
 from models import Registration, RegistrationCreate, RegistrationStatus
+from models.audit_log import AuditAction
+from services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,7 @@ class RegistrationService:
             service = RegistrationService(conn)
         """
         self.conn = conn
+        self.audit_service = AuditService()
     
     async def create_registration(
         self,
@@ -165,51 +168,70 @@ class RegistrationService:
             - available_tools must be valid JSONB array (validated by Pydantic)
         """
         try:
-            query = """
-                INSERT INTO registrations (
-                    endpoint_url, endpoint_name, description, owner_contact,
-                    available_tools, status, submitter_id
+            # Start transaction for atomic operation + audit logging
+            async with self.conn.transaction():
+                query = """
+                    INSERT INTO registrations (
+                        endpoint_url, endpoint_name, description, owner_contact,
+                        available_tools, status, submitter_id
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING registration_id, endpoint_url, endpoint_name, description,
+                              owner_contact, available_tools, status, submitter_id,
+                              approver_id, created_at, updated_at, approved_at
+                """
+                
+                # Convert available_tools list to JSON string for asyncpg
+                tools_json = json.dumps(registration_create.available_tools)
+                
+                row = await self.conn.fetchrow(
+                    query,
+                    str(registration_create.endpoint_url),
+                    registration_create.endpoint_name,
+                    registration_create.description,
+                    registration_create.owner_contact,
+                    tools_json,  # JSONB as JSON string
+                    RegistrationStatus.PENDING.value,
+                    submitter_id
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING registration_id, endpoint_url, endpoint_name, description,
-                          owner_contact, available_tools, status, submitter_id,
-                          approver_id, created_at, updated_at, approved_at
-            """
-            
-            # Convert available_tools list to JSON string for asyncpg
-            tools_json = json.dumps(registration_create.available_tools)
-            
-            row = await self.conn.fetchrow(
-                query,
-                str(registration_create.endpoint_url),
-                registration_create.endpoint_name,
-                registration_create.description,
-                registration_create.owner_contact,
-                tools_json,  # JSONB as JSON string
-                RegistrationStatus.PENDING.value,
-                submitter_id
-            )
-            
-            registration = Registration(
-                registration_id=row["registration_id"],
-                endpoint_url=row["endpoint_url"],
-                endpoint_name=row["endpoint_name"],
-                description=row["description"],
-                owner_contact=row["owner_contact"],
-                available_tools=row["available_tools"],
-                status=RegistrationStatus(row["status"]),
-                submitter_id=row["submitter_id"],
-                approver_id=row["approver_id"],
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-                approved_at=row["approved_at"]
-            )
-            
-            logger.info(
-                f"Registration created: {registration.registration_id} "
-                f"({registration.endpoint_url}) by user {submitter_id}"
-            )
-            return registration
+                
+                registration = Registration(
+                    registration_id=row["registration_id"],
+                    endpoint_url=row["endpoint_url"],
+                    endpoint_name=row["endpoint_name"],
+                    description=row["description"],
+                    owner_contact=row["owner_contact"],
+                    available_tools=row["available_tools"],
+                    status=RegistrationStatus(row["status"]),
+                    submitter_id=row["submitter_id"],
+                    approver_id=row["approver_id"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    approved_at=row["approved_at"]
+                )
+                
+                # Log audit entry within transaction (T011: log 'Created' action)
+                metadata = {
+                    "endpoint_url": str(registration.endpoint_url),
+                    "endpoint_name": registration.endpoint_name,
+                    "owner_contact": registration.owner_contact,
+                    "available_tools_count": len(registration.available_tools)
+                }
+                await self.audit_service.log_action(
+                    connection=self.conn,
+                    registration_id=registration.registration_id,
+                    user_id=submitter_id,
+                    action=AuditAction.CREATED,
+                    previous_status=None,
+                    new_status=RegistrationStatus.PENDING.value,
+                    metadata=metadata
+                )
+                
+                logger.info(
+                    f"Registration created: {registration.registration_id} "
+                    f"({registration.endpoint_url}) by user {submitter_id}"
+                )
+                return registration
             
         except asyncpg.UniqueViolationError as e:
             logger.warning(f"Duplicate endpoint_url: {registration_create.endpoint_url}")
@@ -434,6 +456,80 @@ class RegistrationService:
             logger.error(f"Error retrieving registration {registration_id}: {str(e)}")
             raise
     
+    async def get_registration_by_url(
+        self,
+        endpoint_url: str
+    ) -> Optional[Registration]:
+        """
+        Retrieve a registration by endpoint_url (User Story 2: Programmatic Query).
+        
+        Queries registrations by exact endpoint_url match. This method enables
+        CI/CD pipelines and monitoring systems to check registration status
+        programmatically.
+        
+        Args:
+            endpoint_url: Full URL of the MCP endpoint (e.g., "https://api.example.com/mcp")
+            
+        Returns:
+            Registration: Registration model if found, None if not found
+            
+        Raises:
+            Exception: If database operation fails
+            
+        Example:
+            registration = await service.get_registration_by_url("https://api.example.com/mcp")
+            if registration:
+                print(f"Found: {registration.endpoint_name}")
+                print(f"Status: {registration.status.value}")
+            else:
+                print("Registration not found for this URL")
+                
+        SQL Operation:
+            SELECT * FROM registrations WHERE endpoint_url = $1
+            
+        Notes:
+            - Returns None if URL not found (does not raise exception)
+            - Uses unique index on endpoint_url for fast query (<200ms)
+            - URL comparison is case-sensitive and exact match
+            - T026: Implementation for User Story 2 - Query API
+        """
+        try:
+            query = """
+                SELECT registration_id, endpoint_url, endpoint_name, description,
+                       owner_contact, available_tools, status, submitter_id,
+                       approver_id, created_at, updated_at, approved_at
+                FROM registrations
+                WHERE endpoint_url = $1
+            """
+            
+            row = await self.conn.fetchrow(query, endpoint_url)
+            
+            if not row:
+                logger.debug(f"Registration not found for URL: {endpoint_url}")
+                return None
+            
+            registration = Registration(
+                registration_id=row["registration_id"],
+                endpoint_url=row["endpoint_url"],
+                endpoint_name=row["endpoint_name"],
+                description=row["description"],
+                owner_contact=row["owner_contact"],
+                available_tools=row["available_tools"],
+                status=RegistrationStatus(row["status"]),
+                submitter_id=row["submitter_id"],
+                approver_id=row["approver_id"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+                approved_at=row["approved_at"]
+            )
+            
+            logger.debug(f"Registration retrieved by URL: {registration.registration_id}")
+            return registration
+            
+        except Exception as e:
+            logger.error(f"Error retrieving registration by URL {endpoint_url}: {str(e)}")
+            raise
+    
     async def update_registration_status(
         self,
         registration_id: UUID,
@@ -504,64 +600,91 @@ class RegistrationService:
             raise ValueError("Cannot set status to Pending")
         
         try:
-            # Only update if current status is Pending
-            query = """
-                UPDATE registrations
-                SET status = $1, approver_id = $2, approved_at = CURRENT_TIMESTAMP
-                WHERE registration_id = $3 AND status = 'Pending'
-                RETURNING registration_id, endpoint_url, endpoint_name, description,
-                          owner_contact, available_tools, status, submitter_id,
-                          approver_id, created_at, updated_at, approved_at
-            """
-            
-            row = await self.conn.fetchrow(
-                query,
-                new_status.value,
-                approver_id,
-                registration_id
-            )
-            
-            if not row:
-                logger.warning(
-                    f"Failed to update registration {registration_id}: "
-                    "either not found or not in Pending status"
+            # Start transaction for atomic operation + audit logging
+            async with self.conn.transaction():
+                # Only update if current status is Pending
+                query = """
+                    UPDATE registrations
+                    SET status = $1, approver_id = $2, approved_at = CURRENT_TIMESTAMP
+                    WHERE registration_id = $3 AND status = 'Pending'
+                    RETURNING registration_id, endpoint_url, endpoint_name, description,
+                              owner_contact, available_tools, status, submitter_id,
+                              approver_id, created_at, updated_at, approved_at
+                """
+                
+                row = await self.conn.fetchrow(
+                    query,
+                    new_status.value,
+                    approver_id,
+                    registration_id
                 )
-                return None
-            
-            registration = Registration(
-                registration_id=row["registration_id"],
-                endpoint_url=row["endpoint_url"],
-                endpoint_name=row["endpoint_name"],
-                description=row["description"],
-                owner_contact=row["owner_contact"],
-                available_tools=row["available_tools"],
-                status=RegistrationStatus(row["status"]),
-                submitter_id=row["submitter_id"],
-                approver_id=row["approver_id"],
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-                approved_at=row["approved_at"]
-            )
-            
-            logger.info(
-                f"Registration {registration.registration_id} status updated to "
-                f"{new_status.value} by admin {approver_id}"
-            )
-            return registration
+                
+                if not row:
+                    logger.warning(
+                        f"Failed to update registration {registration_id}: "
+                        "either not found or not in Pending status"
+                    )
+                    return None
+                
+                registration = Registration(
+                    registration_id=row["registration_id"],
+                    endpoint_url=row["endpoint_url"],
+                    endpoint_name=row["endpoint_name"],
+                    description=row["description"],
+                    owner_contact=row["owner_contact"],
+                    available_tools=row["available_tools"],
+                    status=RegistrationStatus(row["status"]),
+                    submitter_id=row["submitter_id"],
+                    approver_id=row["approver_id"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    approved_at=row["approved_at"]
+                )
+                
+                # Log audit entry within transaction (T012: log 'Approved'/'Rejected' action)
+                audit_action = (
+                    AuditAction.APPROVED if new_status == RegistrationStatus.APPROVED
+                    else AuditAction.REJECTED
+                )
+                metadata = {
+                    "approver_id": str(approver_id),
+                    "reason": reason if reason else None
+                }
+                await self.audit_service.log_action(
+                    connection=self.conn,
+                    registration_id=registration.registration_id,
+                    user_id=approver_id,
+                    action=audit_action,
+                    previous_status=RegistrationStatus.PENDING.value,
+                    new_status=new_status.value,
+                    metadata=metadata
+                )
+                
+                logger.info(
+                    f"Registration {registration.registration_id} status updated to "
+                    f"{new_status.value} by admin {approver_id}"
+                )
+                return registration
             
         except Exception as e:
             logger.error(f"Error updating registration status: {str(e)}")
             raise
     
-    async def delete_registration(self, registration_id: UUID) -> bool:
+    async def delete_registration(
+        self,
+        registration_id: UUID,
+        deleter_id: UUID
+    ) -> bool:
         """
-        Delete a registration (admin only).
+        Delete a registration (admin only) with audit logging (T036).
         
-        Permanently removes the registration record from the database.
-        This operation cannot be undone.
+        Permanently removes the registration record from the database after
+        creating an audit log entry. This ensures compliance tracking even
+        after deletion (FR-023: audit logs retained after registration deleted).
         
         Args:
             registration_id: UUID of the registration to delete
+            deleter_id: UUID of the admin user performing deletion
             
         Returns:
             bool: True if registration was deleted, False if not found
@@ -571,35 +694,73 @@ class RegistrationService:
             
         Example:
             # Admin deletes registration
-            deleted = await service.delete_registration(reg_id)
+            deleted = await service.delete_registration(reg_id, admin_user.user_id)
             if deleted:
                 print("Registration deleted successfully")
             else:
                 print("Registration not found")
                 
-        SQL Operation:
-            DELETE FROM registrations WHERE registration_id = $1
+        SQL Operations:
+            1. SELECT registration details (for audit metadata)
+            2. INSERT INTO audit_log (action='Deleted')
+            3. DELETE FROM registrations
             
         Security Notes:
             - Only admins can call this method (enforced in route layer)
             - Delete is permanent - no soft delete mechanism
             - Consider using status='Rejected' instead of deletion for audit trail
-            - Audit log entries (if implemented) are not deleted
+            - Audit log entries are preserved (FK constraint is NO ACTION - T037)
         """
         try:
-            query = "DELETE FROM registrations WHERE registration_id = $1"
-            
-            result = await self.conn.execute(query, registration_id)
-            
-            # Extract number of deleted rows from result string "DELETE N"
-            deleted_count = int(result.split()[-1])
-            
-            if deleted_count > 0:
-                logger.info(f"Registration deleted: {registration_id}")
-                return True
-            else:
-                logger.debug(f"Registration not found for deletion: {registration_id}")
-                return False
+            # Start transaction for atomic operation + audit logging
+            async with self.conn.transaction():
+                # T036: Get registration details before deletion for audit metadata
+                get_query = """
+                    SELECT registration_id, endpoint_url, endpoint_name, status,
+                           submitter_id, approver_id
+                    FROM registrations
+                    WHERE registration_id = $1
+                """
+                
+                row = await self.conn.fetchrow(get_query, registration_id)
+                
+                if not row:
+                    logger.debug(f"Registration not found for deletion: {registration_id}")
+                    return False
+                
+                # T036: Create audit log entry BEFORE deletion
+                metadata = {
+                    "endpoint_url": row["endpoint_url"],
+                    "endpoint_name": row["endpoint_name"],
+                    "previous_status": row["status"],
+                    "submitter_id": str(row["submitter_id"]),
+                    "approver_id": str(row["approver_id"]) if row["approver_id"] else None,
+                    "deleted_by": str(deleter_id)
+                }
+                
+                await self.audit_service.log_action(
+                    connection=self.conn,
+                    registration_id=registration_id,
+                    user_id=deleter_id,
+                    action=AuditAction.DELETED,
+                    previous_status=row["status"],
+                    new_status=None,  # No new status after deletion
+                    metadata=metadata
+                )
+                
+                # Now delete the registration
+                delete_query = "DELETE FROM registrations WHERE registration_id = $1"
+                result = await self.conn.execute(delete_query, registration_id)
+                
+                # Extract number of deleted rows from result string "DELETE N"
+                deleted_count = int(result.split()[-1])
+                
+                if deleted_count > 0:
+                    logger.info(f"Registration deleted: {registration_id} by admin {deleter_id}")
+                    return True
+                else:
+                    logger.warning(f"Registration delete failed: {registration_id}")
+                    return False
                 
         except Exception as e:
             logger.error(f"Error deleting registration {registration_id}: {str(e)}")

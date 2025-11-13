@@ -77,7 +77,7 @@ from pythonjsonlogger import jsonlogger
 
 from config import settings
 from database import init_db_pool, close_db_pool
-from routers import health, users, registrations
+from routers import health, users, registrations, audit_logs
 
 # Configure structured JSON logging
 logger = logging.getLogger()
@@ -230,8 +230,9 @@ logger.info(f"CORS configured with origins: {settings.cors_origins_list}")
 app.include_router(health.router)
 app.include_router(users.router)
 app.include_router(registrations.router)
+app.include_router(audit_logs.router)
 
-logger.info("API routers registered: /health, /users, /registrations")
+logger.info("API routers registered: /health, /users, /registrations, /audit-logs")
 
 
 @app.get("/")
@@ -270,7 +271,8 @@ async def root():
         "endpoints": {
             "health": "/health",
             "users": "/users",
-            "registrations": "/registrations"
+            "registrations": "/registrations",
+            "audit_logs": "/audit-logs"
         }
     }
 
